@@ -1,0 +1,225 @@
+@font-face { font-family: 'Panchang'; src: url('fonts/Panchang-Medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Panchang'; src: url('fonts/Panchang-Semibold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Panchang'; src: url('fonts/Panchang-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Panchang'; src: url('fonts/Panchang-Extrabold.ttf') format('truetype'); font-weight: 800; font-display: swap; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Same neutral blacks, lines and accent as the leaderboard and crew UIs. */
+  --bg:      #070708;
+  --line:    rgba(255, 255, 255, 0.07);
+  --line-2:  rgba(255, 255, 255, 0.12);
+
+  --accent:      #ff6200;
+  --accent-rgb:  255, 98, 0;
+  --accent-glow: rgba(var(--accent-rgb), 0.35);
+
+  --gold:  #f5b942;
+  --green: #22c55e;
+  --red:   #ff4d4d;
+
+  --tx-1: #f4f4f5;
+  --tx-2: #b9b9bc;
+  --tx-3: #85858a;
+  --tx-4: #5d5d62;
+
+  --font:      'Panchang', 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --ease:      cubic-bezier(0.16, 1, 0.3, 1);
+
+  --side-w: clamp(380px, 27vw, 520px);
+  --fade-w: 120px;
+  --pad:    clamp(28px, 2.6vw, 52px);
+}
+
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; user-select: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+
+#root {
+  position: fixed; inset: 0;
+  font-family: var(--font); font-weight: 600; color: var(--tx-1);
+  pointer-events: none;
+}
+#root.hidden, .hidden { display: none !important; }
+
+/* ── Side panel ───────────────────────────────────────────────
+   The game stays in view: the only backdrop is this panel, docked left and
+   fading out across its right edge. No backdrop-filter — CEF has nothing
+   behind a transparent NUI page to sample, so a blur paints black. */
+.side {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: calc(var(--side-w) + var(--fade-w));
+  padding: var(--pad) calc(var(--pad) + var(--fade-w)) var(--pad) var(--pad);
+  display: flex; flex-direction: column;
+  background: linear-gradient(90deg,
+    rgba(6, 6, 7, 0.94) 0%,
+    rgba(6, 6, 7, 0.88) calc(100% - var(--fade-w) - 40px),
+    rgba(6, 6, 7, 0) 100%);
+  pointer-events: auto;
+  animation: sideIn 360ms var(--ease) both;
+}
+.side::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, transparent, var(--accent) 35%, var(--accent) 65%, transparent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+/* ── Driver ───────────────────────────────────────────────── */
+.driver {
+  position: relative;
+  display: flex; align-items: center; gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.plate {
+  flex-shrink: 0;
+  min-width: 64px; height: 52px; padding: 0 8px;
+  display: grid; place-items: center;
+  font-size: 30px; font-weight: 800; font-style: italic; letter-spacing: -0.04em;
+  color: #fff;
+  background: var(--accent);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.plate.empty { background: transparent; border: 1px solid var(--line-2); clip-path: none; color: var(--tx-4); font-size: 18px; }
+.d-names { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.rank-img {
+  flex-shrink: 0;
+  width: 46px; height: 46px; object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.6));
+}
+.d-name {
+  font-size: 17px; font-weight: 800; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.d-meta {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tx-3);
+}
+.d-meta .sep { width: 3px; height: 3px; background: var(--tx-4); }
+.d-meta .crew { color: var(--accent); }
+.cls-S { color: var(--gold); }
+.cls-A { color: var(--accent); }
+.cls-B { color: #06b6d4; }
+.cls-C { color: var(--green); }
+.cls-D { color: #94a3b8; }
+
+/* ── Menu ─────────────────────────────────────────────────── */
+.menu { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+
+.menu-kicker {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: clamp(16px, 2.6vh, 28px);
+  font-size: 10px; font-weight: 800; letter-spacing: 0.34em; text-transform: uppercase; color: var(--tx-3);
+}
+.menu-kicker i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.menu-kicker.live { color: #ffb3b3; }
+.menu-kicker.live i { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+.list { display: flex; flex-direction: column; }
+
+.item {
+  position: relative;
+  display: grid; grid-template-columns: 34px 1fr; align-items: baseline;
+  padding: clamp(12px, 1.9vh, 20px) 0 clamp(12px, 1.9vh, 20px) 18px;
+  border-top: 1px solid var(--line);
+  color: var(--tx-4);
+  animation: slideIn 380ms var(--ease) both;
+  animation-delay: var(--d, 0ms);
+  transition: color 160ms, padding-left 240ms var(--ease);
+}
+.item:last-child { border-bottom: 1px solid var(--line); }
+.item::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
+  transform: scaleY(0); transition: transform 240ms var(--ease);
+}
+.item::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.12), transparent 75%);
+  opacity: 0; transition: opacity 200ms;
+  pointer-events: none;
+}
+.item-idx { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--tx-4); transition: color 160ms; }
+.item-label {
+  font-size: clamp(18px, 1.45vw, 28px); font-weight: 800; line-height: 1;
+  text-transform: uppercase; letter-spacing: 0.01em;
+}
+.item-desc {
+  grid-column: 2;
+  font-size: 10px; font-weight: 500; line-height: 1.6; color: var(--tx-3);
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height 260ms var(--ease), opacity 200ms, margin 260ms var(--ease);
+}
+
+.item:hover { color: var(--tx-2); }
+.item.active { color: #fff; padding-left: 26px; }
+.item.active::before { transform: scaleY(1); }
+.item.active::after { opacity: 1; }
+.item.active .item-idx { color: var(--accent); }
+.item.active .item-desc { max-height: 44px; opacity: 1; margin-top: 8px; }
+
+.item.danger.active .item-label { color: var(--red); }
+.item.danger.active .item-idx { color: var(--red); }
+.item.danger.active::before { background: var(--red); box-shadow: 0 0 12px rgba(255, 77, 77, 0.4); }
+.item.danger::after { background: linear-gradient(90deg, rgba(255, 77, 77, 0.12), transparent 75%); }
+
+/* ── Legend ───────────────────────────────────────────────── */
+.legend {
+  display: flex; align-items: center; gap: clamp(14px, 1.4vw, 24px);
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tx-3);
+}
+.key { display: inline-flex; align-items: center; gap: 6px; }
+kbd {
+  display: inline-grid; place-items: center;
+  min-width: 22px; height: 20px; padding: 0 5px;
+  font-family: var(--font); font-size: 8px; font-weight: 800; color: var(--tx-1);
+  border: 1px solid var(--line-2); border-bottom-width: 2px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Confirm modal ────────────────────────────────────────── */
+.modal {
+  position: absolute; inset: 0; z-index: 10;
+  display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  animation: fadeIn 160ms ease-out both;
+}
+.modal-box {
+  position: relative;
+  width: min(420px, 90vw);
+  padding: 28px 28px 22px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 40px 110px rgba(0, 0, 0, 0.85);
+  animation: pop 240ms var(--ease) both;
+}
+.modal-bar { position: absolute; left: 0; top: 0; right: 0; height: 2px; background: var(--red); box-shadow: 0 0 16px rgba(255, 77, 77, 0.5); }
+.modal-title { font-size: 18px; font-weight: 800; text-transform: uppercase; }
+.modal-body { margin-top: 10px; font-size: 11px; font-weight: 500; line-height: 1.7; color: var(--tx-3); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.mbtn {
+  padding: 11px 16px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  border: 1px solid var(--line-2); color: var(--tx-2);
+  transition: border-color 160ms, color 160ms, background 160ms;
+}
+.mbtn.active { color: #fff; border-color: var(--tx-2); background: rgba(255, 255, 255, 0.06); }
+.mbtn-danger.active { color: #fff; border-color: var(--red); background: rgba(255, 77, 77, 0.2); }
+
+/* ── Motion ───────────────────────────────────────────────── */
+#root.out .side { animation: sideOut 180ms ease-in both; }
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sideIn  { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: none; } }
+@keyframes sideOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-36px); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes pop     { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

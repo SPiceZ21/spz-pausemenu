@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPZ Pause Menu</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="root" class="hidden">
+    <aside class="side">
+      <div class="driver" id="driver"></div>
+
+      <div class="menu">
+        <div class="menu-kicker"><i></i>Paused</div>
+        <nav class="list" id="list"></nav>
+      </div>
+
+      <footer class="legend">
+        <span class="key"><kbd>&uarr;</kbd><kbd>&darr;</kbd> Navigate</span>
+        <span class="key"><kbd>Enter</kbd> Select</span>
+        <span class="key"><kbd>Esc</kbd> Resume</span>
+      </footer>
+    </aside>
+
+    <div class="modal hidden" id="modal">
+      <div class="modal-box">
+        <div class="modal-bar"></div>
+        <h3 class="modal-title" id="modalTitle"></h3>
+        <p class="modal-body" id="modalBody"></p>
+        <div class="modal-actions">
+          <button class="mbtn" id="modalCancel">Cancel</button>
+          <button class="mbtn mbtn-danger" id="modalConfirm">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
