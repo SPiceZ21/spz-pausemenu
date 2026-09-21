@@ -243,6 +243,10 @@ if (!inNui()) {
     status: { live: false },
     items: [
       { id: 'resume',     label: 'Resume',   desc: 'Back to the session.' },
+      // Freeroam only — client/main.lua leaves this row out during a race.
+      { id: 'hub',        label: 'Teleport to Hub', desc: "Back to Pop's Diner.",
+        confirm: { title: 'Teleport to hub?',
+                   body: 'You will be moved across the map. Your car comes with you if you are driving it.' } },
       { id: 'map',        label: 'Map',      desc: 'Waypoints, blips and the race route.' },
       { id: 'settings',   label: 'Settings', desc: 'Graphics, audio, controls and key bindings.' },
       { id: 'disconnect', label: 'Quit',     desc: 'Leave the server.', danger: true,

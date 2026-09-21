@@ -15,10 +15,77 @@ local lastBusyAt = 0      -- last frame another menu or the GTA pause menu had t
 
 local function InRace() return LocalPlayer.state.inRace == true end
 
+-- ── Teleport to hub ───────────────────────────────────────────────────────────
+--
+-- Freeroam convenience: a player who drove to Paleto and is done exploring
+-- gets back to Pop's Diner without the drive. Never offered mid-race (see
+-- Build), so it cannot be used to skip a track.
+--
+-- The three things that make a teleport feel finished rather than glitchy:
+--
+--   * FADE FIRST. Moving a player on a visible frame shows them the world
+--     tearing in around the arrival.
+--   * TAKE THE CAR, but only if they are driving it. Teleporting a vehicle
+--     someone else is driving drags them across the map with you; a passenger
+--     is dropped out of it instead.
+--   * WAIT FOR COLLISION, frozen. Landing in a cell that has not streamed
+--     means falling through the map, and the interior here is an MLO — the
+--     worst case for arriving early.
+local tpBusy = false
+
+local function TeleportToHub()
+    local hub = Config.Hub or {}
+    local c   = hub.Coords
+    if not c then return end
+    if tpBusy then return end
+    if InRace() then return end          -- belt and braces; Build hides it anyway
+    tpBusy = true
+
+    CreateThread(function()
+        DoScreenFadeOut(hub.FadeOutMs or 350)
+        local deadline = GetGameTimer() + 2000
+        while not IsScreenFadedOut() and GetGameTimer() < deadline do Wait(0) end
+
+        local ped = PlayerPedId()
+        local veh = GetVehiclePedIsIn(ped, false)
+        local driving = veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped
+
+        -- Passenger in someone else's car: step out rather than ride along.
+        if veh ~= 0 and not driving then
+            ClearPedTasksImmediately(ped)
+            Wait(50)
+            ped = PlayerPedId()
+            veh = 0
+        end
+
+        local ent = driving and veh or ped
+
+        RequestCollisionAtCoord(c.x, c.y, c.z)
+        FreezeEntityPosition(ent, true)
+        SetEntityCoordsNoOffset(ent, c.x, c.y, c.z, false, false, false)
+        SetEntityHeading(ent, c.w or 0.0)
+        if driving then SetVehicleOnGroundProperly(veh) end
+
+        -- Frozen until the world around the arrival exists.
+        local wait = GetGameTimer() + (hub.CollisionTimeoutMs or 8000)
+        while not HasCollisionLoadedAroundEntity(ent) and GetGameTimer() < wait do
+            RequestCollisionAtCoord(c.x, c.y, c.z)
+            Wait(0)
+        end
+
+        FreezeEntityPosition(ent, false)
+        DoScreenFadeIn(hub.FadeInMs or 550)
+        tpBusy = false
+    end)
+end
+
 -- ── Menu model ────────────────────────────────────────────────────────────────
 
 local function Build()
     local racing = InRace()
+
+    local hub = Config.Hub or {}
+    local showHub = hub.Enabled ~= false and hub.Coords ~= nil and not racing
 
     actions = {
         resume   = function() end,
@@ -27,17 +94,41 @@ local function Build()
         disconnect = function() TriggerServerEvent('spz-pausemenu:disconnect') end,
     }
 
-    return {
+    -- Registered only when it is offered. The NUI sends an item id that is
+    -- looked up in this table, so an id the menu did not build does nothing —
+    -- which means a stale page cannot teleport a player out of a race.
+    if showHub then actions.hub = TeleportToHub end
+
+    local items = {
         { id = 'resume',   label = 'Resume',
           desc = racing and 'Back to the race — your car never stopped.' or 'Back to the session.' },
-        { id = 'map',      label = 'Map',      desc = 'Waypoints, blips and the race route.' },
-        { id = 'settings', label = 'Settings', desc = 'Graphics, audio, controls and key bindings.' },
-        { id = 'disconnect', label = 'Quit', danger = true,
-          desc    = racing and 'Leave the server. You are in a race — this counts as a DNF.' or 'Leave the server.',
-          confirm = { title = 'Quit?', body = racing
-              and 'You are in a live race. Leaving now will DNF you.'
-              or  'You will leave the server.' } },
     }
+
+    -- Above Map, below Resume: it is an action that changes the world, and the
+    -- two GTA frontends below it are not.
+    if showHub then
+        items[#items + 1] = {
+            id      = 'hub',
+            label   = hub.Label or 'Teleport to Hub',
+            desc    = hub.Desc  or "Back to Pop's Diner.",
+            confirm = {
+                title = 'Teleport to hub?',
+                body  = 'You will be moved across the map. Your car comes with you if you are driving it.',
+            },
+        }
+    end
+
+    items[#items + 1] = { id = 'map',      label = 'Map',      desc = 'Waypoints, blips and the race route.' }
+    items[#items + 1] = { id = 'settings', label = 'Settings', desc = 'Graphics, audio, controls and key bindings.' }
+    items[#items + 1] = {
+        id = 'disconnect', label = 'Quit', danger = true,
+        desc    = racing and 'Leave the server. You are in a race — this counts as a DNF.' or 'Leave the server.',
+        confirm = { title = 'Quit?', body = racing
+            and 'You are in a live race. Leaving now will DNF you.'
+            or  'You will leave the server.' },
+    }
+
+    return items
 end
 
 local function Driver()
