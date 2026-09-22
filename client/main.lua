@@ -109,8 +109,8 @@ local function Build()
     if showHub then
         items[#items + 1] = {
             id      = 'hub',
-            label   = hub.Label or 'Teleport to Hub',
-            desc    = hub.Desc  or "Back to Pop's Diner.",
+            label   = hub.Label or 'Hub',
+            desc    = hub.Desc  or "Teleport back to Pop's Diner.",
             confirm = {
                 title = 'Teleport to hub?',
                 body  = 'You will be moved across the map. Your car comes with you if you are driving it.',

@@ -29,8 +29,8 @@ Config.Sounds = true
 -- the roof of the building instead of inside it.
 Config.Hub = {
   Enabled = true,
-  Label   = 'Teleport to Hub',
-  Desc    = "Back to Pop's Diner.",
+  Label   = 'Hub',
+  Desc    = "Teleport back to Pop's Diner.",
 
   -- x, y, z, heading
   Coords  = vec4(1588.65, 6454.98, 26.01, 151.03),
