@@ -1,6 +1,7 @@
 -- client/main.lua
 -- SPiceZ pause menu. Takes over Esc / P from GTA's own pause menu with a short,
--- clean list: resume, the GTA map, the GTA settings, quit.
+-- clean list: resume, the GTA map, the GTA settings, quit — plus one row that
+-- changes with context: Hub in freeroam, Leave race during a race.
 --
 -- It deliberately does NOT list racing, garage, crew or leaderboard actions —
 -- those live on the radial menu (spz-core/client/radial.lua), and a second copy
@@ -94,18 +95,30 @@ local function Build()
         disconnect = function() TriggerServerEvent('spz-pausemenu:disconnect') end,
     }
 
-    -- Registered only when it is offered. The NUI sends an item id that is
+    -- Registered only when they are offered. The NUI sends an item id that is
     -- looked up in this table, so an id the menu did not build does nothing —
-    -- which means a stale page cannot teleport a player out of a race.
+    -- which means a stale page cannot teleport a player out of a race, and
+    -- cannot DNF a player who is not in one.
     if showHub then actions.hub = TeleportToHub end
+
+    -- Abandoning the race. The server owns what that means — mid-race it is a
+    -- DNF, during warmup it is a clean withdrawal — so this sends the same
+    -- event /leaverace does and lets spz-races decide (server/queue.lua,
+    -- LeaveQueue). Nothing is done client-side first: the car despawn, bucket
+    -- move and teleport out all come back from the server.
+    if racing then
+        actions.leave = function() TriggerServerEvent('SPZ:leaveQueue') end
+    end
 
     local items = {
         { id = 'resume',   label = 'Resume',
           desc = racing and 'Back to the race — your car never stopped.' or 'Back to the session.' },
     }
 
-    -- Above Map, below Resume: it is an action that changes the world, and the
-    -- two GTA frontends below it are not.
+    items[#items + 1] = { id = 'map',      label = 'Map',      desc = 'Waypoints, blips and the race route.' }
+
+    -- Third, below Map: the map is where you go to decide you want to be
+    -- somewhere else, so the teleport that acts on that decision sits under it.
     if showHub then
         items[#items + 1] = {
             id      = 'hub',
@@ -118,7 +131,21 @@ local function Build()
         }
     end
 
-    items[#items + 1] = { id = 'map',      label = 'Map',      desc = 'Waypoints, blips and the race route.' }
+    -- Same slot as Hub, and they are never offered together: Hub is freeroam
+    -- only, this is race only. Whichever applies is the third row.
+    if racing then
+        items[#items + 1] = {
+            id      = 'leave',
+            label   = 'Leave race',
+            danger  = true,
+            desc    = 'Abandon the race and return to freeroam. Counts as a DNF.',
+            confirm = {
+                title = 'Leave the race?',
+                body  = 'You will be marked DNF and moved out of the race world. You cannot rejoin this race.',
+            },
+        }
+    end
+
     items[#items + 1] = { id = 'settings', label = 'Settings', desc = 'Graphics, audio, controls and key bindings.' }
     items[#items + 1] = {
         id = 'disconnect', label = 'Quit', danger = true,
