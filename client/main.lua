@@ -15,6 +15,11 @@ local actions    = {}     -- [itemId] = fn
 local lastBusyAt = 0      -- last frame another menu or the GTA pause menu had the screen
 
 local function InRace() return LocalPlayer.state.inRace == true end
+-- Set by each minigame (pursuit, colorrush, hideseek) to its display name.
+local function Minigame()
+    local m = LocalPlayer.state.inMinigame
+    return (type(m) == 'string' and m ~= '') and m or nil
+end
 
 -- ── Teleport to hub ───────────────────────────────────────────────────────────
 --
@@ -84,9 +89,11 @@ end
 
 local function Build()
     local racing = InRace()
+    local game   = not racing and Minigame() or nil
 
     local hub = Config.Hub or {}
-    local showHub = hub.Enabled ~= false and hub.Coords ~= nil and not racing
+    -- Never teleport out of a minigame's world: leave it properly instead.
+    local showHub = hub.Enabled ~= false and hub.Coords ~= nil and not racing and not game
 
     actions = {
         resume   = function() end,
@@ -108,6 +115,10 @@ local function Build()
     -- move and teleport out all come back from the server.
     if racing then
         actions.leave = function() TriggerServerEvent('SPZ:leaveQueue') end
+    end
+    -- The minigame that set the flag handles this and sends us home.
+    if game then
+        actions.leave_minigame = function() TriggerEvent('spz:leaveMinigame') end
     end
 
     local items = {
@@ -142,6 +153,19 @@ local function Build()
             confirm = {
                 title = 'Leave the race?',
                 body  = 'You will be marked DNF and moved out of the race world. You cannot rejoin this race.',
+            },
+        }
+    end
+
+    if game then
+        items[#items + 1] = {
+            id      = 'leave_minigame',
+            label   = 'Leave minigame',
+            danger  = true,
+            desc    = ('Quit %s and return to freeroam.'):format(game),
+            confirm = {
+                title = ('Leave %s?'):format(game),
+                body  = 'You will forfeit this round and be sent back to where you were.',
             },
         }
     end
@@ -217,6 +241,10 @@ local function Open()
     })
     Sound('open')
 end
+
+AddEventHandler('spz:minigameChanged', function()
+    if isOpen then SendNUIMessage({ action = 'menu', items = Build(), status = { live = InRace() } }) end
+end)
 
 -- A race starting or ending under the open menu changes the Quit warning.
 AddStateBagChangeHandler('inRace', ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
