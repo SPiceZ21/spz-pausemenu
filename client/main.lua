@@ -1,11 +1,8 @@
 -- client/main.lua
--- SPiceZ pause menu. Takes over Esc / P from GTA's own pause menu with a short,
--- clean list: resume, the GTA map, the GTA settings, quit — plus one row that
--- changes with context: Hub in freeroam, Leave race during a race.
---
--- It deliberately does NOT list racing, garage, crew or leaderboard actions —
--- those live on the radial menu (spz-core/client/radial.lua), and a second copy
--- of them here would just be two places to keep in sync.
+-- SPiceZ pause menu. Takes over Esc / P from GTA's own pause menu with a
+-- bento grid: resume, the GTA map, the GTA settings, quit — plus rows that
+-- change with context (Hub, Leave race / queue / minigame) and a quick-access
+-- strip that runs the same commands as the radial menu (spz-core/client/radial.lua).
 --
 -- The NUI never sends a command. It sends an item id, looked up in the action
 -- table built for this opening; an id the menu did not offer does nothing.
@@ -15,6 +12,8 @@ local actions    = {}     -- [itemId] = fn
 local lastBusyAt = 0      -- last frame another menu or the GTA pause menu had the screen
 
 local function InRace() return LocalPlayer.state.inRace == true end
+local function InQueue() return LocalPlayer.state.inQueue == true end
+local function Has(res) return GetResourceState(res) == 'started' end
 -- Set by each minigame (pursuit, colorrush, hideseek) to its display name.
 local function Minigame()
     local m = LocalPlayer.state.inMinigame
@@ -120,6 +119,11 @@ local function Build()
     if game then
         actions.leave_minigame = function() TriggerEvent('spz:leaveMinigame') end
     end
+    -- Queued but not racing yet: leaving costs nothing (same as the radial's Leave Queue).
+    local queued = not racing and InQueue()
+    if queued then
+        actions.leave_queue = function() ExecuteCommand('leaverace') end
+    end
 
     local items = {
         { id = 'resume',   label = 'Resume',
@@ -170,7 +174,32 @@ local function Build()
         }
     end
 
+    if queued then
+        items[#items + 1] = {
+            id = 'leave_queue', label = 'Leave queue', danger = true,
+            desc = 'Drop out of the race queue. No penalty.',
+        }
+    end
+
     items[#items + 1] = { id = 'settings', label = 'Settings', desc = 'Graphics, audio, controls and key bindings.' }
+
+    -- ── Quick access ─────────────────────────────────────────────────────────
+    -- Shortcuts to the same commands the radial menu runs (spz-core/client/radial.lua),
+    -- shown as a strip of small tiles. Each is offered only when its resource is
+    -- running and it makes sense in the current context.
+    local free = not racing and not game
+    local function quick(id, label, cmd, cond)
+        if cond == false then return end
+        actions[id] = function() ExecuteCommand(cmd) end
+        items[#items + 1] = { id = id, label = label, quick = true }
+    end
+    quick('q_join',    'Join race',   'joinrace',    free and not queued and Has('spz-races'))
+    quick('q_car',     'Spawn car',   'car',         free and Has('spz-carspawner'))
+    quick('q_board',   'Leaderboard', 'leaderboard', Has('spz-leaderboard'))
+    quick('q_results', 'Results',     'raceresults', Has('spz-leaderboard'))
+    quick('q_crew',    'Crew',        'crew',        Has('spz-crew'))
+    quick('q_char',    'Character',   'appearance',  free and Has('spz-appearance'))
+
     items[#items + 1] = {
         id = 'disconnect', label = 'Quit', danger = true,
         desc    = racing and 'Leave the server. You are in a race — this counts as a DNF.' or 'Leave the server.',
@@ -193,7 +222,41 @@ local function Driver()
         crew       = pick(st.crewTag, p.crew_tag),
         nation     = pick(st.nation, p.nation),
         raceNumber = pick(st.raceNumber, p.race_number),
+        -- racing record for the driver card (spz-identity's profile row)
+        stats = {
+            iRating  = pick(st.iRating, p.i_rating),
+            sr       = pick(st.sr, p.sr),
+            license  = pick(st.licenseTier, p.license_tier),
+            podiums  = p.top3_count,
+            xp       = p.xp,
+            points   = p.alltime_points,
+            credits  = p.credits,
+            playtime = p.playtime,
+        },
     }
+end
+
+-- ── Character headshot ────────────────────────────────────────────────────────
+-- Same trick as spz-speedcam: a transparent ped headshot served to NUI as
+-- https://nui-img/<txd>/<txd>. Taken on open, released on close.
+local headshot = nil
+
+local function ReleaseHeadshot()
+    if headshot then UnregisterPedheadshot(headshot); headshot = nil end
+end
+
+local function SendHeadshot()
+    ReleaseHeadshot()
+    CreateThread(function()
+        local h = RegisterPedheadshotTransparent(PlayerPedId())
+        local deadline = GetGameTimer() + 1500
+        while not (IsPedheadshotValid(h) and IsPedheadshotReady(h)) do
+            if GetGameTimer() > deadline or not isOpen then UnregisterPedheadshot(h); return end
+            Wait(0)
+        end
+        headshot = h
+        SendNUIMessage({ action = 'face', txd = GetPedheadshotTxdString(h) })
+    end)
 end
 
 -- ── Open / close ──────────────────────────────────────────────────────────────
@@ -226,6 +289,7 @@ local function Close(silent)
     lastBusyAt = GetGameTimer()
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'close' })
+    ReleaseHeadshot()
     if not silent then Sound('close') end
 end
 
@@ -239,6 +303,7 @@ local function Open()
         player = Driver(),
         status = { live = InRace() },
     })
+    SendHeadshot()
     Sound('open')
 end
 
@@ -247,13 +312,16 @@ AddEventHandler('spz:minigameChanged', function()
 end)
 
 -- A race starting or ending under the open menu changes the Quit warning.
-AddStateBagChangeHandler('inRace', ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
-    SetTimeout(0, function()
-        if isOpen then
-            SendNUIMessage({ action = 'menu', items = Build(), status = { live = InRace() } })
-        end
+-- Joining / leaving the queue swaps Leave queue and Join race.
+for _, key in ipairs({ 'inRace', 'inQueue' }) do
+    AddStateBagChangeHandler(key, ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
+        SetTimeout(0, function()
+            if isOpen then
+                SendNUIMessage({ action = 'menu', items = Build(), status = { live = InRace() } })
+            end
+        end)
     end)
-end)
+end
 
 -- ── Key interception ──────────────────────────────────────────────────────────
 --
@@ -341,5 +409,7 @@ exports('Close',  function() Close() end)
 exports('IsOpen', function() return isOpen end)
 
 AddEventHandler('onResourceStop', function(res)
-    if res == GetCurrentResourceName() and isOpen then SetNuiFocus(false, false) end
+    if res ~= GetCurrentResourceName() then return end
+    if isOpen then SetNuiFocus(false, false) end
+    ReleaseHeadshot()
 end)

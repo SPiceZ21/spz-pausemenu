@@ -8,20 +8,24 @@
 </head>
 <body>
   <div id="root" class="hidden">
-    <aside class="side">
-      <div class="driver" id="driver"></div>
+    <div class="shade"></div>
 
-      <div class="menu">
+    <main class="stage">
+      <header class="top">
         <div class="menu-kicker"><i></i>Paused</div>
-        <nav class="list" id="list"></nav>
-      </div>
+        <div class="brand">SPICEZ <b>RACING</b></div>
+        <div class="clock" id="clock"></div>
+      </header>
+
+      <section class="bento" id="bento"></section>
+      <section class="quick-row" id="quick"></section>
 
       <footer class="legend">
-        <span class="key"><kbd>&uarr;</kbd><kbd>&darr;</kbd> Navigate</span>
+        <span class="key"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> Navigate</span>
         <span class="key"><kbd>Enter</kbd> Select</span>
         <span class="key"><kbd>Esc</kbd> Resume</span>
       </footer>
-    </aside>
+    </main>
 
     <div class="modal hidden" id="modal">
       <div class="modal-box">
