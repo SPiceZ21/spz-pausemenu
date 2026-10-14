@@ -5,7 +5,7 @@ lua54 'yes'
 name 'spz-pausemenu'
 description 'SPiceZ Racing — pause menu (replaces the GTA ESC menu)'
 author 'SPiceZ-Core'
-version '1.0.4'
+version '1.0.5'
 
 ui_page 'ui/index.html'
 
