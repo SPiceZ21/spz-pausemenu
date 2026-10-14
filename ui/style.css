@@ -176,29 +176,34 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .tile.danger.active { border-color: #ef4444; background: linear-gradient(160deg, rgba(239, 68, 68, 0.14), var(--gray-900) 60%); }
 .tile.danger.active .t-chip, .tile.danger.active .t-go { background: #dc2626; border-color: #dc2626; }
 
-/* map: the drawn street grid fills the whole card; text sits on top */
+/* map: GTA's own map art, centred on the player (app.js placeMap) */
 .tile.map { padding: 18px; }
-.map-view {
-  position: absolute; inset: 0;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 0 / 30px 30px,
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 0 / 30px 30px,
-    radial-gradient(ellipse at 72% 28%, rgba(34, 197, 94, 0.16) 0%, transparent 55%),
-    radial-gradient(ellipse at 18% 75%, rgba(14, 116, 144, 0.26) 0%, transparent 50%),
-    var(--gray-950);
+.map-real { position: absolute; inset: 0; overflow: hidden; background: #0e1620; }
+.map-img {
+  position: absolute; left: 0; top: 0; max-width: none; height: auto;
+  transform-origin: 0 0; will-change: transform;
+  transition: transform 260ms linear;
+  user-select: none; pointer-events: none;
 }
-.map-view::after {          /* keeps the label readable over the map */
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(9, 9, 11, 0.55) 0%, transparent 28%, transparent 55%, rgba(9, 9, 11, 0.92) 100%);
+.map-real::after {          /* keeps the label readable over the map */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(9, 9, 11, 0.55) 0%, transparent 28%, transparent 58%, rgba(9, 9, 11, 0.9) 100%);
 }
-.map-route { position: absolute; inset: 0; width: 100%; height: 100%; }
-.map-route path { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 9 7; animation: dash 2.4s linear infinite; }
-.map-route .road { stroke: rgba(255, 255, 255, 0.12); stroke-width: 6; stroke-dasharray: none; animation: none; }
-.map-pin { position: absolute; left: 50%; top: 46%; width: 28px; transform: translate(-50%, -100%); color: #fff; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
-.map-pin svg { width: 100%; height: auto; }
-.map-pin::after { content: ''; position: absolute; left: 50%; bottom: -4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: rgba(var(--accent-rgb), 0.5); animation: ping 1.6s ease-out infinite; z-index: -1; }
+.map-me {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; z-index: 1;
+  transform: translate(-50%, -50%); transition: transform 260ms linear;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+}
+.map-me svg { width: 100%; height: 100%; display: block; }
+.map-me::before {           /* soft pulse under the arrow */
+  content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 50%; background: rgba(var(--accent-rgb), 0.45); animation: ping 1.8s ease-out infinite; z-index: -1;
+}
+.map-wp { position: absolute; width: 24px; z-index: 1; color: #c084fc; transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7)); transition: left 260ms linear, top 260ms linear; }
+.map-wp svg { width: 100%; height: auto; display: block; }
 .tile.map.active { background: var(--gray-900); }
-.tile.map.active .map-view { box-shadow: inset 0 0 0 1px var(--accent); }
+.tile.map.active .map-real { box-shadow: inset 0 0 0 2px var(--accent); }
 
 /* driver card (compact) */
 .tile.driver { justify-content: space-between; gap: 12px; background: linear-gradient(170deg, rgba(var(--accent-rgb), 0.16), var(--gray-900) 50%); cursor: default; }

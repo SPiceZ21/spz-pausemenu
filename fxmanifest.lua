@@ -15,6 +15,7 @@ files {
   'ui/app.js',
   'ui/fonts/*.ttf',
   'ui/ranks/*.svg',
+  'ui/map.webp',
 }
 
 shared_scripts {

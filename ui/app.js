@@ -40,16 +40,45 @@ ICON.q_results = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v
 ICON.q_crew    = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.9 0-7 1.8-7 4.5V20h14v-2.5C16 14.8 12.9 13 9 13zm8 0c-.6 0-1.2 0-1.7.1 1.6 1.1 2.7 2.6 2.7 4.4V20h4v-2.5c0-2.6-2.3-4.5-5-4.5z"/></svg>';
 ICON.q_char    = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2.1 3-4 3S8.5 4.7 8 3z"/></svg>';
 
+// ── Map tile: GTA's own map art (map.webp, stitched from the game's minimap
+// textures: 2 x 3 tiles of 4500 world units, top-left at world -4140, 8400).
+const MAP = { img: 'map.webp', w: 2560, x0: -4140, y0: 8400, worldW: 9000, span: 1600 };
 const MAP_ART = `
-  <div class="map-view">
-    <svg class="map-route" viewBox="0 0 400 220" preserveAspectRatio="none">
-      <path class="road" d="M-10 170 C 80 150 110 60 200 80 S 330 160 410 40"/>
-      <path class="road" d="M120 -10 C 140 80 100 150 160 230"/>
-      <path class="road" d="M260 -10 C 250 60 300 120 290 230"/>
-      <path d="M40 180 C 100 140 130 90 200 95 S 300 120 340 60"/>
-    </svg>
-    <span class="map-pin">${'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>'}</span>
+  <div class="map-real" id="mapReal">
+    <img class="map-img" id="mapImg" src="${MAP.img}" alt="" draggable="false" />
+    <span class="map-wp hidden" id="mapWp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></span>
+    <span class="map-me" id="mapMe"><svg viewBox="0 0 24 24"><path d="M12 2 20 21 12 16.5 4 21z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg></span>
   </div>`;
+
+// Centre the map on the player, arrow = heading (GTA: degrees, counter-clockwise from north).
+function placeMap() {
+  const p = S.mapPos;
+  const box = $('mapReal'), img = $('mapImg');
+  if (!p || !box || !img) return;
+  const W = box.clientWidth, H = box.clientHeight;
+  if (!W || !H) return;
+  const ppu = MAP.w / MAP.worldW;                    // image px per world unit
+  const scale = W / ((p.span || MAP.span) * ppu);    // screen px per image px
+  const toPx = (x, y) => [(x - MAP.x0) * ppu * scale, (MAP.y0 - y) * ppu * scale];
+  const [mx, my] = toPx(p.x, p.y);
+  img.style.width = `${MAP.w * scale}px`;
+  img.style.transform = `translate(${W / 2 - mx}px, ${H / 2 - my}px)`;
+  $('mapMe').style.transform = `translate(-50%, -50%) rotate(${-(p.h || 0)}deg)`;
+
+  const wp = $('mapWp');
+  if (p.wx != null && p.wy != null) {
+    const [wx, wy] = toPx(p.wx, p.wy);
+    // Off the tile: pinned to the edge, pointing the way.
+    const pad = 16;
+    const x = Math.min(W - pad, Math.max(pad, W / 2 + (wx - mx)));
+    const y = Math.min(H - pad, Math.max(pad, H / 2 + (wy - my)));
+    wp.style.left = `${x}px`; wp.style.top = `${y}px`;
+    wp.classList.remove('hidden');
+  } else {
+    wp.classList.add('hidden');
+  }
+}
+window.addEventListener('resize', placeMap);
 
 const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
@@ -59,7 +88,7 @@ function tileBadges(it) {
   switch (it.id) {
     case 'resume':   return S.live ? b('error', 'Race live', true) : b('success', 'Free roam', true);
     case 'map':      return b('', 'Waypoints & blips');
-    case 'hub':      return b('primary', "Pop's Diner");
+    case 'hub':      return it.badge ? b('primary', it.badge) : '';
     case 'leave':
     case 'leave_minigame': return b('error', 'Ends your run');
     case 'leave_queue': return b('', 'No penalty');
@@ -91,6 +120,8 @@ function quickHtml(it, i, d) {
 
 function tileHtml(it, i, cls, d) {
   const icon = ICON[it.id] || ICON.resume;
+  // In game the tile is a see-through window onto GTA's own map (client/main.lua
+  // moves the big radar under it). The drawn map is only the browser preview.
   if (it.id === 'map') return `
     <button class="tile map ${cls || ''}" data-i="${i}" data-id="map" style="--d:${d}ms">
       ${MAP_ART}
@@ -127,6 +158,7 @@ function renderList() {
   $('quick').classList.toggle('hidden', !quick.length);
   renderDriver(S.player);
   paintSelection();
+  requestAnimationFrame(placeMap);
 }
 
 function tileEls() { return [...document.querySelectorAll('.stage .tile[data-i]')]; }
@@ -157,11 +189,10 @@ function move(dx, dy) {
   if (best) select(Number(best.dataset.i));
 }
 
-// Same file mapping as the leaderboard: S-tier 3/4/5 art is named RANK3/4/5.
+// Same file mapping as the leaderboard: RANK<tier><sub> for every tier.
 const RANK_FILES = (() => {
   const m = {};
-  for (const t of ['A', 'B', 'C']) for (let i = 1; i <= 5; i++) m[t + i] = `RANK${t}${i}`;
-  m.S1 = 'RANKS1'; m.S2 = 'RANKS2'; m.S3 = 'RANK3'; m.S4 = 'RANK4'; m.S5 = 'RANK5';
+  for (const t of ['A', 'B', 'C', 'S']) for (let i = 1; i <= 5; i++) m[t + i] = `RANK${t}${i}`;
   return m;
 })();
 function rankArt(rank) {
@@ -411,11 +442,13 @@ window.addEventListener('message', (ev) => {
   else if (m.action === 'close') closeMenu(true);
   else if (m.action === 'menu') { if (S.open) replaceItems(m.items, m.status); }
   else if (m.action === 'theme') applyTheme(m.theme);
+  else if (m.action === 'pos') { S.mapPos = m; placeMap(); }
   else if (m.action === 'face') { S.face = m.txd || null; if (S.open) renderDriver(S.player); }
 });
 
 // ── Browser preview (outside FiveM) ───────────────────────────────────────────
 if (!inNui()) {
+  setTimeout(() => { S.mapPos = { x: 195, y: -934, h: 30, wx: -1037, wy: -2737 }; placeMap(); }, 50);
   // Stand-in for the game world: bright daylight, the hardest case for legibility.
   document.body.style.background =
     'linear-gradient(180deg,#8fb8de 0%,#c9dbe8 42%,#b9a58a 43%,#6f655a 60%,#3b3834 100%)';
@@ -423,11 +456,12 @@ if (!inNui()) {
     player: { name: 'SpiceZ', rank: 'B-2', crew: '[NR]', nation: 'in', raceNumber: 21,
               stats: { iRating: 1742, sr: 3.41, license: 1, podiums: 38, xp: 48210, points: 9120, credits: 125400, playtime: 6420 } },
     status: { live: false },
+    _preview: true,
     items: [
       { id: 'resume',     label: 'Resume',   desc: 'Back to the session.' },
       { id: 'map',        label: 'Map',      desc: 'Waypoints, blips and the race route.' },
       // Freeroam only — client/main.lua leaves this row out during a race.
-      { id: 'hub',        label: 'Hub', desc: "Teleport back to Pop's Diner.",
+      { id: 'hub',        label: 'Hub', desc: "Teleport back to Pop's Diner.", badge: "Pop's Diner",
         confirm: { title: 'Teleport to hub?',
                    body: 'You will be moved across the map. Your car comes with you if you are driving it.' } },
       { id: 'leave_queue', label: 'Leave queue', danger: true, desc: 'Drop out of the race queue. No penalty.' },

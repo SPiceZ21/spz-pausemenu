@@ -14,6 +14,9 @@ Config.ReopenGuardMs = 450
 -- Frontend sounds on navigate / select / back.
 Config.Sounds = true
 
+-- Map tile: metres of the world shown across the tile (smaller = closer in).
+Config.MapSpan = 1600
+
 -- ── Teleport to hub ─────────────────────────────────────────────────────────
 --
 -- A way back to where everything is — the spawn menu's Pop's Diner — for a
@@ -31,6 +34,8 @@ Config.Hub = {
   Enabled = true,
   Label   = 'Hub',
   Desc    = "Teleport back to Pop's Diner.",
+  -- Name on the Hub tile's badge. Leave nil to take it from Desc ("back to <place>").
+  Place   = nil,
 
   -- x, y, z, heading
   Coords  = vec4(1588.65, 6454.98, 26.01, 151.03),

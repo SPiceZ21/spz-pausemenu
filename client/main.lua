@@ -139,6 +139,9 @@ local function Build()
             id      = 'hub',
             label   = hub.Label or 'Hub',
             desc    = hub.Desc  or "Teleport back to Pop's Diner.",
+            -- Badge on the tile: Config.Hub.Place, else the place named in Desc
+            -- ("Teleport back to <place>.").
+            badge   = hub.Place or (hub.Desc and hub.Desc:match('[Bb]ack to (.-)%.?$')) or nil,
             confirm = {
                 title = 'Teleport to hub?',
                 body  = 'You will be moved across the map. Your car comes with you if you are driving it.',
@@ -283,6 +286,24 @@ local function Sound(name)
     if s then PlaySoundFrontend(-1, s[1], s[2], true) end
 end
 
+-- ── Live map in the Map tile ──────────────────────────────────────────────────
+-- The tile draws GTA's own map art (ui/map.webp, stitched from the game's
+-- minimap textures) and centres it on the player. All it needs from here is
+-- where we are, which way we face, and the waypoint, a few times a second.
+local function SendMapPos()
+    local ped = PlayerPedId()
+    local veh = GetVehiclePedIsIn(ped, false)
+    local ent = veh ~= 0 and veh or ped
+    local c = GetEntityCoords(ent)
+    local msg = { action = 'pos', x = c.x, y = c.y, h = GetEntityHeading(ent), span = Config.MapSpan }
+    local wp = GetFirstBlipInfoId(8)                  -- the player's waypoint
+    if wp ~= 0 and DoesBlipExist(wp) then
+        local w = GetBlipInfoIdCoord(wp)
+        msg.wx, msg.wy = w.x, w.y
+    end
+    SendNUIMessage(msg)
+end
+
 local function Close(silent)
     if not isOpen then return end
     isOpen     = false
@@ -304,6 +325,13 @@ local function Open()
         status = { live = InRace() },
     })
     SendHeadshot()
+    SendMapPos()
+    CreateThread(function()
+        while isOpen do
+            Wait(250)
+            if isOpen then SendMapPos() end
+        end
+    end)
     Sound('open')
 end
 
@@ -313,7 +341,7 @@ end)
 
 -- A race starting or ending under the open menu changes the Quit warning.
 -- Joining / leaving the queue swaps Leave queue and Join race.
-for _, key in ipairs({ 'inRace', 'inQueue' }) do
+for _, key in ipairs({ 'inRace', 'inQueue', 'inMinigame' }) do
     AddStateBagChangeHandler(key, ('player:%s'):format(GetPlayerServerId(PlayerId())), function()
         SetTimeout(0, function()
             if isOpen then
@@ -354,7 +382,14 @@ CreateThread(function()
                 local c = Config.OpenControls[i]
                 DisableControlAction(0, c, true)
                 if IsDisabledControlJustReleased(0, c) and (now - lastBusyAt) > Config.ReopenGuardMs then
-                    Open()
+                    -- Protected: an error inside Open() used to kill this thread,
+                    -- and from then on Esc fell through to GTA's own pause menu.
+                    local ok, err = pcall(Open)
+                    if not ok then
+                        print('^1[spz-pausemenu] open failed: ' .. tostring(err) .. '^7')
+                        isOpen = false
+                        SetNuiFocus(false, false)
+                    end
                     break
                 end
             end
@@ -411,5 +446,6 @@ exports('IsOpen', function() return isOpen end)
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     if isOpen then SetNuiFocus(false, false) end
+    isOpen = false
     ReleaseHeadshot()
 end)
