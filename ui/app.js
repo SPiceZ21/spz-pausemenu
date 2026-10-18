@@ -39,6 +39,7 @@ ICON.q_board   = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h5v
 ICON.q_results = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3zm0 4H6v1a2 2 0 0 0 1 1.7zm10 0v2.7A2 2 0 0 0 18 8V7z"/></svg>';
 ICON.q_crew    = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.9 0-7 1.8-7 4.5V20h14v-2.5C16 14.8 12.9 13 9 13zm8 0c-.6 0-1.2 0-1.7.1 1.6 1.1 2.7 2.6 2.7 4.4V20h4v-2.5c0-2.6-2.3-4.5-5-4.5z"/></svg>';
 ICON.q_char    = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.7-2.1 3-4 3S8.5 4.7 8 3z"/></svg>';
+ICON.q_tour    = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
 
 // ── Map tile: GTA's own map art (map.webp, stitched from the game's minimap
 // textures: 2 x 3 tiles of 4500 world units, top-left at world -4140, 8400).
