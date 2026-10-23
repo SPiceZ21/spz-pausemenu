@@ -78,8 +78,10 @@ local function TeleportToHub()
             Wait(0)
         end
 
-        FreezeEntityPosition(ent, false)
+        -- Held still for 1 s after arriving, while the screen fades back in.
         DoScreenFadeIn(hub.FadeInMs or 550)
+        Wait(1000)
+        FreezeEntityPosition(ent, false)
         tpBusy = false
     end)
 end
