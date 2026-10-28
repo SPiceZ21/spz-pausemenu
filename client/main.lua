@@ -14,7 +14,7 @@ local lastBusyAt = 0      -- last frame another menu or the GTA pause menu had t
 local function InRace() return LocalPlayer.state.inRace == true end
 local function InQueue() return LocalPlayer.state.inQueue == true end
 local function Has(res) return GetResourceState(res) == 'started' end
--- Set by each minigame (pursuit, colorrush, hideseek) to its display name.
+-- Set by each minigame (pursuit, colorrush, ...) to its display name.
 local function Minigame()
     local m = LocalPlayer.state.inMinigame
     return (type(m) == 'string' and m ~= '') and m or nil
