@@ -371,13 +371,20 @@ local function OxMenuOpen()
     return lib.getOpenMenu and lib.getOpenMenu() ~= nil
 end
 
+-- Track Studio uses Esc (twice) to discard a track.
+local function TrackStudioOpen()
+    if GetResourceState('spz-races') ~= 'started' then return false end
+    local ok, on = pcall(function() return exports['spz-races']:IsTrackStudioActive() end)
+    return ok and on == true
+end
+
 CreateThread(function()
     while true do
         local now = GetGameTimer()
 
         if isOpen then
             Wait(100)
-        elseif IsNuiFocused() or IsPauseMenuActive() or OxMenuOpen() or not Ready() then
+        elseif IsNuiFocused() or IsPauseMenuActive() or OxMenuOpen() or TrackStudioOpen() or not Ready() then
             lastBusyAt = now
             Wait(0)
         else
